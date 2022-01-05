@@ -72,44 +72,17 @@ class ViewController: UIViewController {
     // rxSwift
     // 또 다른 유틸리티: PromiseKit, Bolt
     func downloadJson(_ url: String) -> Observable<String?> {
-        // 1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴
-        return Observable.create() { emitter in
-            let url = URL(string: url)!
-            let task = URLSession.shared.dataTask(with: url) { (data, _, err) in
-                guard err == nil else {
-                    emitter.onError(err!)
-                    return
-                }
-                
-                if let dat = data, let json = String(data: dat, encoding: .utf8) {
-                    emitter.onNext(json)    //  url 스레드에서 전달됨 (subsrcibe에서 ui 변경은 메인스레드로 감싸기)
-                }
-                emitter.onCompleted()
-            }
-            
-            task.resume()
-            
-            return Disposables.create() {   // 데이터가 캔슬됨
-                task.cancel()
-            }
-        }
-        
-//        return Observable.create() { f in
-//            DispatchQueue.global().async {
-//                let url = URL(string: MEMBER_LIST_URL)!
-//                let data = try! Data(contentsOf: url)
-//                let json = String(data: data, encoding: .utf8)
-//
-//                DispatchQueue.main.async {
-//                    // onNext 스테이트로 값 전달
-//                    f.onNext(json)
-//                }
-//            }
+        // just로 아래 주석을 한 줄로 표현 가능 (데이터 하나만 전송 가능)
+        // just 대신 from을 쓰면 한 줄 띄어 내려받기 가능 [Hello, World] -> Hello\n World
+        return Observable.just("Hello World")
+//        return Observable.create { emitter in
+//            emitter.onNext("Hello World")
+//            emitter.onCompleted()
 //            return Disposables.create()
 //        }
     }
 
-    // MARK: SYNC
+    // MARK : SYNC
 
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
 
@@ -119,27 +92,19 @@ class ViewController: UIViewController {
         
         // rx
         // 2. Observable로 오는 데이터를 받아서 처리
-        downloadJson(MEMBER_LIST_URL)
-            .subscribe { event in
-                switch event{
-                case let .next(json):
-                    DispatchQueue.main.async {
-                        self.editView.text = json
-                        self.setVisibleWithAnimation(self.activityIndicator, false)
-                    }
-                    
-                case .completed:
-                    break
-                case .error:
-                    break
-                }
-            }
-        
-        // 기존 비동기
-//        self.downloadJson(MEMBER_LIST_URL) { json in
-//            self.editView.text = json
-//            self.setVisibleWithAnimation(self.activityIndicator, false)
-//        }
-         
+        _ = downloadJson(MEMBER_LIST_URL)
+            .map { json in json?.count ?? 0 }   // operator
+            .filter { cnt in cnt > 0 }  //  operator
+            .map { "\($0)" }    // operator
+            .observeOn(MainScheduler.instance)  // <super: operator> 메인쓰레드 감싸줘야하는거 없애줄 수 있음. (다음줄에 영향)
+            .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .default))   // 처음부터 옵저버블에 영향, 그래서 어느 줄에 있든 위치 상관 X
+            .subscribe(onNext: {json in
+                self.editView.text = json
+                self.setVisibleWithAnimation(self.activityIndicator, false)
+            })
+//            .subscribe(onNext: { print($0) },
+//                       onError: { err in print(err)},
+//                       onCompleted: { print("Com")})
+             
     }
 }
