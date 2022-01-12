@@ -6,7 +6,7 @@ target 'RxSwift+MVVM' do
   use_frameworks!
 
   # Pods for RxSwift+MVVM
-  pod 'RxSwift'
+  pod 'RxSwift', '~> 4.0'
   pod 'SwiftyJSON'
 
 end

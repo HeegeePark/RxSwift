@@ -71,7 +71,7 @@ class ViewController: UIViewController {
     
     // rxSwift
     // 또 다른 유틸리티: PromiseKit, Bolt
-    func downloadJson(_ url: String) -> Observable<String?> {
+    func downloadJson(_ url: String) -> Observable<String> {
         // just로 아래 주석을 한 줄로 표현 가능 (데이터 하나만 전송 가능)
         // just 대신 from을 쓰면 한 줄 띄어 내려받기 가능 [Hello, World] -> Hello\n World
         return Observable.just("Hello World")
@@ -90,21 +90,16 @@ class ViewController: UIViewController {
         editView.text = ""
         setVisibleWithAnimation(activityIndicator, true)
         
-        // rx
         // 2. Observable로 오는 데이터를 받아서 처리
-        _ = downloadJson(MEMBER_LIST_URL)
-            .map { json in json?.count ?? 0 }   // operator
-            .filter { cnt in cnt > 0 }  //  operator
-            .map { "\($0)" }    // operator
-            .observeOn(MainScheduler.instance)  // <super: operator> 메인쓰레드 감싸줘야하는거 없애줄 수 있음. (다음줄에 영향)
-            .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .default))   // 처음부터 옵저버블에 영향, 그래서 어느 줄에 있든 위치 상관 X
+        let jsonObservable = downloadJson(MEMBER_LIST_URL)
+        let helloObservable = Observable.just("Hello World")
+        
+        _ = Observable.zip(jsonObservable, helloObservable) { $1 + "\n" + $0 }
+            .observeOn(MainScheduler.instance)
             .subscribe(onNext: {json in
                 self.editView.text = json
                 self.setVisibleWithAnimation(self.activityIndicator, false)
             })
-//            .subscribe(onNext: { print($0) },
-//                       onError: { err in print(err)},
-//                       onCompleted: { print("Com")})
-             
+        
     }
 }
